@@ -1,1 +1,1 @@
-# GoGhost
+# GoGhost is a simple TCP/WebSocket Server

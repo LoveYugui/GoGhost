@@ -90,12 +90,12 @@ type TCPServer struct {
 	serverConfig TcpServerConfig
 }
 
-func NewTCPServer(srvNum uint16, address string, protocolName string, netcb netInterface.ConnectionCallBack) (netInterface.Server, error) {
+func NewTCPServer(srvNum uint16, address string, protocolName string, m netInterface.ConnectionManager, netcb netInterface.ConnectionCallBack) (netInterface.Server, error) {
 
 	server := &TCPServer{
 		srvNumber: srvNum,
 		isRunning: true,
-		connManager: NewTcpConnectionManager(),
+		connManager: m,
 		once: sync.Once{},
 		ProtocolName: protocolName,
 		address: address,
@@ -224,7 +224,6 @@ func (server *TCPServer) establishTcpConnection(conn *net.TCPConn) {
 
 	tcpConnection:= NewServerConn(
 		GenConnId(),
-		conn,
 		server,
 		protocol)
 

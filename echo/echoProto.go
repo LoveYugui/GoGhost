@@ -14,9 +14,9 @@ type echoProtocol struct {
 	TcpConn net.Conn
 }
 
-func NewEchoProtocol(conn net.Conn) netInterface.Protocol {
+func NewEchoProtocol(conn interface{}) netInterface.Codec {
 	p := &echoProtocol{
-		TcpConn: conn,
+		TcpConn: conn.(*net.TCPConn),
 	}
 
 	return p
@@ -46,10 +46,10 @@ func (msg * echoMessage) Encode() ([]byte, error) {
 	return ([]byte)(msg.data), nil
 }
 
-func (c *echoProtocol) Read(conn net.Conn) (msg netInterface.Message, err error) {
+func (c *echoProtocol) Read() (msg netInterface.Message, err error) {
 	msg = NewEchoMessage()
 	var buf = make([]byte, 256)
-	n, err := conn.Read(buf)
+	n, err := c.TcpConn.Read(buf)
 
 	if err != nil {
 		return nil, err

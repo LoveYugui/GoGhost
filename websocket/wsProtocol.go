@@ -2,20 +2,11 @@ package websocket
 
 import (
 	"github.com/GoGhost/protoCodec"
-	"net"
 	"github.com/GoGhost/net/netInterface"
-	"fmt"
-	"gitlab.mogujie.org/mgc/baselib/monitor"
-	"log"
 	"github.com/gorilla/websocket"
-	"net/http"
 )
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
+var upgrader = websocket.Upgrader{} // use default options
 
 func init() {
 	proto.RegisterProto("WSProtocol", NewWSProtocol)
@@ -42,14 +33,10 @@ type wsProtocol struct {
 	wsConn *websocket.Conn
 }
 
-func NewWSProtocol(conn net.Conn) netInterface.Protocol {
-
-	conn, err := upgrader.Upgrade(w, r, nil)
-
-	var nc net.Conn = (net.Conn)(conn)
+func NewWSProtocol(conn interface{}) netInterface.Codec {
 
 	p := &wsProtocol{
-		wsConn: nc
+		wsConn: conn.(*websocket.Conn),
 	}
 
 	return p
@@ -79,22 +66,14 @@ func (msg * echoMessage) Encode() ([]byte, error) {
 	return ([]byte)(msg.data), nil
 }
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
-func (c *wsProtocol) Read(conn net.Conn) (msg netInterface.Message, err error) {
+func (c *wsProtocol) Read() (msg netInterface.Message, err error) {
 	jmsg := &WsMsg{}
 
 	buf := []byte{}
 	var e error
 	for {
 
-		var c *websocket.Conn =  conn.(*websocket.Conn)
-
-		_, buf, e = c.(*websocket.Conn).ReadMessage()
+		_, buf, e = c.wsConn.ReadMessage()
 
 		if e != nil {
 			return nil, e
@@ -115,14 +94,14 @@ func (c *wsProtocol) Write(msg netInterface.Message) (n int, err error) {
 		return 0, err
 	}
 
-	return c.TcpConn.Write(pdubuf)
+	return 0, c.wsConn.WriteMessage(2, pdubuf)
 }
 
 func (c *wsProtocol) WriteBinary(b []byte) (n int, err error) {
-	return c.TcpConn.Write(b)
+	return 0, c.wsConn.WriteMessage(2, b)
 }
 
 func (c *wsProtocol) Close() error {
-	return c.TcpConn.Close()
+	return c.wsConn.Close()
 }
 

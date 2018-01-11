@@ -15,16 +15,32 @@
  * limitations under the License.
  */
 
-package tcp
+package manager
 
 import (
 	"sync"
 	"math/rand"
 	"time"
 	"github.com/GoGhost/net/netInterface"
+	log "github.com/GoGhost/log"
 )
 
 const sessionMapNum = 8
+
+var (
+	CM netInterface.ConnectionManager = NewConnectionManager()
+)
+
+func init()  {
+	go stats()
+}
+
+func stats()  {
+	for {
+		time.Sleep(time.Second * 10)
+		log.Infoln("CM size ", 	CM.Size())
+	}
+}
 
 type TcpConnectionManager struct {
 	sessionMaps [sessionMapNum]sessionMap
@@ -54,7 +70,7 @@ func (this *sessionMap) RandomSelectFromMap() netInterface.Connection {
 	return array_conns[index]
 }
 
-func NewTcpConnectionManager() netInterface.ConnectionManager {
+func NewConnectionManager() netInterface.ConnectionManager {
 	manager := &TcpConnectionManager{}
 	for i := 0; i < len(manager.sessionMaps); i++ {
 		manager.sessionMaps[i].sessions = make(map[uint64]netInterface.Connection)

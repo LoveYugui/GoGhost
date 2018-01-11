@@ -84,7 +84,7 @@ func (c *TcpClient) Start() bool {
 
 	protocol := proto.NewProto(c.protocolName, tcpConn.(*net.TCPConn))
 
-	c.conn = NewClientConn(GenConnId(), tcpConn.(*net.TCPConn), c.chanSize, c, protocol)
+	c.conn = NewClientConn(GenConnId(), c.chanSize, c, protocol)
 
 	//put into clientGroup
 	c.conn.Start()

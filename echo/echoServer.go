@@ -4,6 +4,7 @@ import (
 	log "github.com/GoGhost/log"
 	"github.com/GoGhost/net/netImplement/tcp"
 	"github.com/GoGhost/net/netInterface"
+	"github.com/GoGhost/net/netImplement/manager"
 )
 
 type echoHandler struct {
@@ -29,11 +30,11 @@ func (eh * echoHandler) OnMessageData(conn netInterface.Connection, msg netInter
 }
 
 func StartEchoServer() {
-	echoSrv, err := tcp.NewTCPServer(uint16(1), "127.0.0.1:6666", "EchoProtocol", NewEchoHandler())
+	echoSrv, err := tcp.NewTCPServer(uint16(1), "127.0.0.1:6666", "EchoProtocol", manager.CM, NewEchoHandler())
 	if err != nil {
 		log.Errorln(err.Error())
 		return
 	}
 
-	echoSrv.Start()
+	go echoSrv.Start()
 }

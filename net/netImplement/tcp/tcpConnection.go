@@ -56,16 +56,15 @@ const (
 
 type TcpConnection struct {
 
-	//连接ID，后面生成的规则要结合ServerNumber
 	ConnID             uint64
 	name               string
 	address            string
 	connState          uint8
 	connType           uint8
 
-	conn 		       *net.TCPConn
-	//底层采用什么样的分包
-	protocol           netInterface.Protocol
+	//conn 		       *net.TCPConn
+
+	codec	           netInterface.Codec
 
 	running            *util.AtomicBoolean
 	once               sync.Once
@@ -89,9 +88,6 @@ type TcpConnection struct {
 	//Work协程的数目
 	WorkNum            int
 
-	// 扩展数据
-	ExtraData          interface{}
-
 	attributes 		   *util.SyncMap
 
 	//每分钟接收数据包统计
@@ -101,10 +97,10 @@ type TcpConnection struct {
 
 type TimeLoopFun  func(conn *TcpConnection)
 
-func NewServerConn(connid uint64, conn *net.TCPConn, networkcb netInterface.ConnectionCallBack, p netInterface.Protocol) netInterface.Connection {
+func NewServerConn(connid uint64, networkcb netInterface.ConnectionCallBack, p netInterface.Codec) netInterface.Connection {
 	serverConn := &TcpConnection{
 		ConnID: connid,
-		conn: conn,
+
 		running: util.NewAtomicBoolean(true),
 		connState: CLOSED,
 		connType: TCPSVRCONN,
@@ -112,7 +108,7 @@ func NewServerConn(connid uint64, conn *net.TCPConn, networkcb netInterface.Conn
 		heartBeat : false,
 		heartBeatInterval : 0,
 
-		protocol: p,
+		codec: p,
 		finish: sync.WaitGroup{},
 		messageSendChan: make(chan netInterface.Message, 128),
 		messageHandlerChan: make(chan netInterface.Message, 128),
@@ -123,7 +119,7 @@ func NewServerConn(connid uint64, conn *net.TCPConn, networkcb netInterface.Conn
 
 		WorkNum : 1,
 
-		//attributes: util.NewSyncMap(),
+		attributes: util.NewSyncMap(),
 	}
 
 	//serverConn.NetworkCB.OnConnection(serverConn)
@@ -131,19 +127,19 @@ func NewServerConn(connid uint64, conn *net.TCPConn, networkcb netInterface.Conn
 	return serverConn
 }
 
-func NewClientConn(connId uint64, conn *net.TCPConn, chanSize uint32, networkcb netInterface.ConnectionCallBack, p netInterface.Protocol) (netInterface.Connection) {
+func NewClientConn(connId uint64, chanSize uint32, networkcb netInterface.ConnectionCallBack, p netInterface.Codec) (netInterface.Connection) {
 	clientConn := &TcpConnection{
 		ConnID: connId,
 
 		running: util.NewAtomicBoolean(true),
-		conn: conn,
+
 		connState: CLOSED,
 		connType: TCPCLIENTCONN,
 
 		heartBeat : true,
 		heartBeatInterval : 30 * time.Second,
 
-		protocol: p,
+		codec: p,
 		finish: sync.WaitGroup{},
 		messageSendChan: make(chan netInterface.Message, chanSize),
 		messageHandlerChan: make(chan netInterface.Message, chanSize),
@@ -152,13 +148,13 @@ func NewClientConn(connId uint64, conn *net.TCPConn, chanSize uint32, networkcb 
 		WorkNum : 1,
 		Reconnect : true,
 
-		//attributes: util.NewSyncMap(),
+		attributes: util.NewSyncMap(),
 	}
 	return clientConn
 }
 
 func (this *TcpConnection) String() string{
-	return fmt.Sprintln(this.name, " , id = ", this.ConnID, " , lAddr : ", this.conn.LocalAddr(), " , rAddr : ", this.conn.RemoteAddr())
+	return fmt.Sprintln(this.name, " , id = ", this.ConnID)//, " , lAddr : ", this.conn.LocalAddr(), " , rAddr : ", this.conn.RemoteAddr())
 }
 
 func (this *TcpConnection) SetTimeStamp(t time.Time) {
@@ -188,14 +184,6 @@ func (this *TcpConnection)Address() string {
 func (this *TcpConnection) AddTimeTask(interval time.Duration, fn func()) {
 }
 
-func (this *TcpConnection)SetExtraData(d interface{}) {
-	this.ExtraData = d
-}
-
-func (this *TcpConnection)GetExtraData() interface{} {
-	return this.ExtraData
-}
-
 func (this *TcpConnection)SetName(name string) {
 	this.name = name
 }
@@ -211,11 +199,11 @@ func (this *TcpConnection)GetId() uint64 {
 }
 
 func (this *TcpConnection) GetConn() net.Conn  {
-	return this.conn
+	return nil//this.conn
 }
 
-func (this *TcpConnection) GetProtocol() netInterface.Protocol {
-	return this.protocol
+func (this *TcpConnection) GetCodec() netInterface.Codec {
+	return this.codec
 }
 
 func (this *TcpConnection)Type() uint8 {
@@ -264,7 +252,7 @@ func (this *TcpConnection)Close() {
 			close(this.closeConnChan)
 
 			//关闭网络连接；
-			this.conn.Close()
+			this.codec.Close()
 			this.finish.Wait()
 		}
 	})
@@ -303,14 +291,14 @@ func (this *TcpConnection)WriteBinary(msg []byte) (n int, err error) {
 		return 0, errors.New("TcpConnection is not running")
 	}
 
-	return this.conn.Write(msg)
+	return this.codec.WriteBinary(msg)
 }
 
 func (this *TcpConnection) Read()  error {
 
-	msg, err := this.protocol.Read(this.conn)
+	msg, err := this.codec.Read()
 	if err != nil {
-		log.Warning("ReadData fail address", this.LAddr().String())
+		log.Warning("ReadData fail address")//, this.LAddr().String())
 		return err
 	}
 
@@ -325,11 +313,11 @@ func (this *TcpConnection) Read()  error {
 }
 
 func (this *TcpConnection) LAddr() net.Addr {
-	return this.conn.LocalAddr()
+	return nil//this.conn.LocalAddr()
 }
 
 func (this *TcpConnection) RAddr() net.Addr {
-	return this.conn.RemoteAddr()
+	return nil//this.conn.RemoteAddr()
 }
 
 func (this *TcpConnection) SetAttribute(key string, attr interface{}) error {
@@ -407,7 +395,7 @@ func (this *TcpConnection)writeLoop() {
 
 		case msg := <-this.messageSendChan:
 			if msg != nil {
-				if _, err := this.protocol.Write(msg); err != nil {
+				if _, err := this.codec.Write(msg); err != nil {
 					log.Error("Error writing data ", err.Error(), " ", this.String())
 					return
 				}

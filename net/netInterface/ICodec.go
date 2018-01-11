@@ -17,17 +17,16 @@
 
 package netInterface
 
-import (
-	"net"
-)
 
-type Protocol interface {
+type Codec interface {
 
 	GetType() string
 
-	Read(conn net.Conn) (packageData Message, err error)
+	Read() (packageData Message, err error)
 
 	Write(packageData Message) (n int, err error)
 
 	WriteBinary(msg []byte) (n int, err error)
+
+	Close() error
 }

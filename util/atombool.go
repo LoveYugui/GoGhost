@@ -257,7 +257,7 @@ type SyncMap struct {
 
 func NewSyncMap()*SyncMap {
 	return &SyncMap{
-		shard: make(map[interface{}]interface{}, 1024),
+		shard: make(map[interface{}]interface{}, 32),
 	}
 }
 

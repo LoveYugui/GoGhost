@@ -25,8 +25,8 @@ import (
 type Connection interface {
 	Name() string
 	GetId() uint64
-	GetConn() net.Conn
-	GetProtocol() Protocol
+
+	GetCodec() Codec
 	Type() uint8
 	State() uint8
 	Start() bool
@@ -34,9 +34,6 @@ type Connection interface {
 	Close()
 
 	NeedReconnect() bool
-
-	SetExtraData(d interface{})
-	GetExtraData() interface{}
 
 	SetTimeStamp(t time.Time)
 	GetTimeStamp() time.Time
