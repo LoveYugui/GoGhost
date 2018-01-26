@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	_ "github.com/GoGhost/echo"
 	"time"
 	"github.com/GoGhost/websocket"
  	_ "net/http/pprof"
 	"net/http"
+	"github.com/GoGhost/echo"
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 
 	fmt.Println("start ECHO")
 
-	//echo.StartEchoServer()
+	echo.StartEchoServer()
 
 	fmt.Println("start WS")
 
