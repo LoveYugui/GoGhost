@@ -9,6 +9,10 @@ import (
 	"sync"
 	"fmt"
 	"github.com/GoGhost/net/netImplement/manager"
+	"strconv"
+	"github.com/GoGhost/persistence/redisConn"
+	"time"
+	"strings"
 )
 
 type WebSocketServer struct {
@@ -39,6 +43,19 @@ func NewWSHandler() netInterface.ConnectionCallBack {
 
 func (eh * wsHandler) OnConnection(conn netInterface.Connection) {
 	log.Infoln("wsHandler OnConnection : ", conn)
+	fmt.Println("wsHandler OnConnection : ", conn)
+	userId := strings.TrimSpace(strconv.FormatUint(conn.GetId(), 10))
+	fmt.Printf("->%s<-", userId)
+
+
+	conn.SetAttribute("userId", userId)
+
+	err := redisConn.RedisConn.Put(userId, 1, time.Second*10)
+	if err != nil {
+		log.Errorf("RedisConn.Put error ", err)
+		fmt.Println("RedisConn.Put error ", err)
+	}
+
 }
 
 func (eh * wsHandler) OnDisConnection(conn netInterface.Connection) {
@@ -47,7 +64,9 @@ func (eh * wsHandler) OnDisConnection(conn netInterface.Connection) {
 
 func (eh * wsHandler) OnMessageData(conn netInterface.Connection, msg netInterface.Message) error {
 	log.Infoln("wsHandler OnMessageData : ", conn)
+
 	conn.Write(msg)
+
 	return nil
 }
 

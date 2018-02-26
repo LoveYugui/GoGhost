@@ -1,0 +1,33 @@
+
+
+option java_multiple_files = true;
+option java_package = "GoGhost.Lord";
+option java_outer_classname = "LordProto";
+
+package pb;
+
+option cc_generic_services = true;
+option java_generic_services = true;
+option py_generic_services = true;
+
+enum ActionID {
+    ActionPrepare = 0;
+    ActionGrab = 1;
+    ActionPlay = 2;
+    ActionAuto = 3;
+    ActionChat = 4;
+}
+
+service AskAction {
+    rpc Ask (ActionRequest) returns (ActionReply) {}
+}
+
+message ActionRequest {
+    optional int64 uid = 1;
+    optional ActionID action = 2;
+    optional string data = 3;
+}
+
+message ActionReply {
+    optional string message = 1;
+}

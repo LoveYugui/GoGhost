@@ -218,9 +218,11 @@ func (this *TcpConnection)Start() bool {
 
 	this.connState = ESTABLISHED
 
-	this.finish.Add(2 + this.WorkNum)
+	this.finish.Add(3 + this.WorkNum)
 	go this.readLoop()
 	go this.writeLoop()
+	go this.heartBeatLoop()
+
 	for i := 0; i < this.WorkNum; i++ {
 		go this.workLoop()
 	}
@@ -254,6 +256,16 @@ func (this *TcpConnection)Close() {
 			//关闭网络连接；
 			this.codec.Close()
 			this.finish.Wait()
+
+			userIdInterface, err := this.GetAttribute("userId")
+
+			userId := ""
+
+			if err == nil {
+				userId = userIdInterface.(string)
+			}
+
+			redisConn.RedisConn.Delete(userId)
 		}
 	})
 }
@@ -374,6 +386,42 @@ func (this *TcpConnection)readLoop() {
 			if err != nil {
 				log.Info("ReadLoop -> To Close:", err.Error() , " ", this.String())
 				return
+			}
+		}
+	}
+}
+
+func (this *TcpConnection)heartBeatLoop() {
+	defer func () {
+		this.finish.Done()
+		this.Close()
+	}()
+
+	for this.IsRunning() {
+
+		t := time.NewTimer(time.Second * 5)
+		userIdInterface, err := this.GetAttribute("userId")
+
+		userId := ""
+
+		if err == nil {
+			userId = userIdInterface.(string)
+		}
+
+		select {
+		case <-this.closeConnChan:
+			log.Info("heartBeat to redis -> To Close ", this.String())
+			return
+		case <-t.C:
+			if userId != "" {
+				err = redisConn.RedisConn.Put(userId, 1, time.Second*10)
+				if err != nil {
+					log.Errorf("RedisConn.Put error ", err)
+					fmt.Println("RedisConn.Put error ", err)
+				}
+
+				fmt.Println(redisConn.RedisConn.Get(userId))
+				fmt.Println(redisConn.RedisConn.IsExist(userId))
 			}
 		}
 	}
